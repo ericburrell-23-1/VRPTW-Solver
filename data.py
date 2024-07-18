@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import csv
-from customer_model import Customer
+from models.customer_model import Customer
 
 
 def generate_data(n_customers):
@@ -67,6 +67,7 @@ def get_data_from_set(data_set, num_customers):
         for destination in data:
             distance = math.sqrt((row[1] - destination[1]) ** 2 +
                                  (row[2] - destination[2]) ** 2)
+            distance = round(distance, 2)
             time = (distance / travel_speed) + row[6]
             cost[len(cost) - 1].append(distance)
             travel_time[len(travel_time) - 1].append(time)
@@ -74,9 +75,9 @@ def get_data_from_set(data_set, num_customers):
     return n_customers, cost, demand, travel_time, time_window_start, time_window_end, t_0
 
 
-def load_data(data_set, capacity):
+def load_data(data_set, num_customers, capacity):
     n_customers, cost, demand, travel_time, time_window_start, time_window_end, t_0 = get_data_from_set(
-        data_set, 25)
+        data_set, num_customers=num_customers)
 
     customers = []
 
