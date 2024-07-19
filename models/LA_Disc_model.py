@@ -59,7 +59,9 @@ def create_LAD_model(customers, start_depot, end_depot, capacity, LA_routes):
                             a_wvr[w.id, v.id, r] = 0
                     else:
                         a_wr[w.id, r] = 1
+                        a_wvr[w.id, v.id, r] = 0
                 else:
+                    a_wr[w.id, r] = 0
                     a_wvr[w.id, v.id, r] = 0
         for w, v in E_u:
             model.addConstr(quicksum(

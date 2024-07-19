@@ -3,6 +3,7 @@ from models.LA_arc_model import LA_arc
 
 
 def all_LA_arcs(customers):
+    P_arcs = set()
     P_plus = set()
     sorted_customers = sorted(customers, key=lambda c: c.id)
 
@@ -25,5 +26,7 @@ def all_LA_arcs(customers):
                     # all_N_p = {n.id for n in N_p}
                     # print(f"\t\t\tN_p: {all_N_p}")
                     P_plus.add(LA_arc(u_p, set(N_p), v_p))
+                    if u_p == u:
+                        P_arcs.add(LA_arc(u_p, set(N_p), v_p))
 
-    return P_plus
+    return P_plus, P_arcs

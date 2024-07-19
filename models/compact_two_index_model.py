@@ -27,7 +27,7 @@ def create_cti_model(customers, start_depot, end_depot, capacity):
         model.addConstr(quicksum(
             x[u.id, v.id] for v in customers + [end_depot] if u != v) == 1, name=f"leaving_{u.id}")
         model.addConstr(quicksum(x[v.id, u.id] for v in [
-                        start_depot] + customers if u != v) == 1, name=f"servicing_{u}")
+                        start_depot] + customers if u != v) == 1, name=f"servicing_{u.id}")
 
     # Time/capacity windows/demands are met
     for u in customers:
