@@ -1,7 +1,7 @@
 from gurobipy import Model, GRB, quicksum
 
 
-def create_LAD_model(customers, start_depot, end_depot, capacity, LA_routes, G_d, E_d, G_t, E_t):
+def create_LA_model(customers, start_depot, end_depot, capacity, LA_routes):
     model = Model("VRPTW")
 
     # Variables
@@ -17,7 +17,6 @@ def create_LAD_model(customers, start_depot, end_depot, capacity, LA_routes, G_d
         lb=u.time_window_end, ub=u.time_window_start, name=f"tau_{u.id}") for u in customers}
     delta = {u.id: model.addVar(
         lb=u.demand, ub=capacity, name=f"delta_{u.id}") for u in customers}
-
     # LA-route vars
     y = {}
     for u in customers:
@@ -26,37 +25,6 @@ def create_LAD_model(customers, start_depot, end_depot, capacity, LA_routes, G_d
             for c in r.visits:
                 y_var_name += f"_{c.id}"
             y[r] = model.addVar(vtype=GRB.BINARY, name=y_var_name)
-
-    # Resource vars
-    G_d_u = {}
-    for u in customers + [start_depot, end_depot]:
-        G_d_u[u.id] = [G_d[(u.id, k)] for (u_key, k) in G_d if u_key == u.id]
-    z_d = {}
-    z_d_next_nodes = {i: [] for i in G_d.values()}
-    z_d_prev_nodes = {i: [] for i in G_d.values()}
-
-    for i in G_d.values():
-        for j in G_d.values():
-            if (i, j) in E_d:
-                z_d[i.name, j.name] = model.addVar(
-                    name=f"z_d_{i.name}_{j.name}")
-                z_d_next_nodes[i].append(j)
-                z_d_prev_nodes[j].append(i)
-
-    G_t_u = {}
-    for u in customers + [start_depot, end_depot]:
-        G_t_u[u.id] = [G_t[(u.id, k)] for (u_key, k) in G_t if u_key == u.id]
-    z_t = {}
-    z_t_next_nodes = {i: [] for i in G_t.values()}
-    z_t_prev_nodes = {i: [] for i in G_t.values()}
-
-    for i in G_t.values():
-        for j in G_t.values():
-            if (i, j) in E_t:
-                z_t[i.name, j.name] = model.addVar(
-                    name=f"z_t_{i.name}_{j.name}")
-                z_t_next_nodes[i].append(j)
-                z_t_prev_nodes[j].append(i)
 
     # Objective
     model.setObjective(quicksum(u.cost[v.index] * x[u.id, v.id] for u in [start_depot] + customers for v in customers + [
@@ -105,43 +73,6 @@ def create_LAD_model(customers, start_depot, end_depot, capacity, LA_routes, G_d
         for w in u.LA_neighbors | {u}:
             model.addConstr(quicksum(x[w.id, v.id] for w, v in E_u) >= quicksum(
                 y[r] * a_wr[w.id, r] for r in LA_routes[u]), name=f"LA_route_{u.id}_ends_at_{w.id}_is_in_x")
-
-    # Discrete time/capacity flow graphs (Z)
-    # Flow conservation
-    for i in G_d.values():
-        if i.u.id not in {start_depot.id, end_depot.id}:
-            model.addConstr(quicksum(z_d[i.name, j.name] for j in z_d_next_nodes[i]) ==
-                            quicksum(z_d[j.name, i.name] for j in z_d_prev_nodes[i]), name=f"cap_flow_conserv_{i.name}")
-
-    for i in G_t.values():
-        if i.u.id not in {start_depot.id, end_depot.id}:
-            model.addConstr(quicksum(z_t[i.name, j.name] for j in z_t_next_nodes[i]) ==
-                            quicksum(z_t[j.name, i.name] for j in z_t_prev_nodes[i]), name=f"time_flow_conserv_{i.name}")
-
-    # Z is consistent with X
-    for u_id, v_id in x:
-        u_nodes = G_d_u[u_id]
-        v_nodes = G_d_u[v_id]
-        z_ij = []
-        for i in u_nodes:
-            for j in v_nodes:
-                if (i, j) in E_d:
-                    z_ij.append(z_d[i.name, j.name])
-        model.addConstr(
-            x[u_id, v_id] == quicksum(z_ij),
-            name=f"Cap_flow_{u_id}_{v_id}_x_consistent")
-
-    for u_id, v_id in x:
-        u_nodes = G_t_u[u_id]
-        v_nodes = G_t_u[v_id]
-        z_ij = []
-        for i in u_nodes:
-            for j in v_nodes:
-                if (i, j) in E_t:
-                    z_ij.append(z_t[i.name, j.name])
-        model.addConstr(
-            x[u_id, v_id] == quicksum(z_ij),
-            name=f"Time_flow_{u_id}_{v_id}_x_consistent")
 
     # Time/capacity windows/demands are met
     for u in customers:

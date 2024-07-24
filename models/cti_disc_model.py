@@ -1,7 +1,7 @@
 from gurobipy import Model, GRB, quicksum
 
 
-def create_LAD_model(customers, start_depot, end_depot, capacity, LA_routes, G_d, E_d, G_t, E_t):
+def create_disc_model(customers, start_depot, end_depot, capacity, G_d, E_d, G_t, E_t):
     model = Model("VRPTW")
 
     # Variables
@@ -18,19 +18,12 @@ def create_LAD_model(customers, start_depot, end_depot, capacity, LA_routes, G_d
     delta = {u.id: model.addVar(
         lb=u.demand, ub=capacity, name=f"delta_{u.id}") for u in customers}
 
-    # LA-route vars
-    y = {}
-    for u in customers:
-        for r in LA_routes[u]:
-            y_var_name = "y"
-            for c in r.visits:
-                y_var_name += f"_{c.id}"
-            y[r] = model.addVar(vtype=GRB.BINARY, name=y_var_name)
-
     # Resource vars
     G_d_u = {}
     for u in customers + [start_depot, end_depot]:
         G_d_u[u.id] = [G_d[(u.id, k)] for (u_key, k) in G_d if u_key == u.id]
+        # print(
+        #     f"Customer {u.id} has G_d_u nodes {[i.name for i in G_d_u[u.id]]}")
     z_d = {}
     z_d_next_nodes = {i: [] for i in G_d.values()}
     z_d_prev_nodes = {i: [] for i in G_d.values()}
@@ -38,6 +31,7 @@ def create_LAD_model(customers, start_depot, end_depot, capacity, LA_routes, G_d
     for i in G_d.values():
         for j in G_d.values():
             if (i, j) in E_d:
+                # print(f"Creating a z variable for i={i.name}, j={j.name}")
                 z_d[i.name, j.name] = model.addVar(
                     name=f"z_d_{i.name}_{j.name}")
                 z_d_next_nodes[i].append(j)
@@ -69,42 +63,6 @@ def create_LAD_model(customers, start_depot, end_depot, capacity, LA_routes, G_d
             x[u.id, v.id] for v in customers + [end_depot] if u != v) == 1, name=f"leaving_{u.id}")
         model.addConstr(quicksum(x[v.id, u.id] for v in [start_depot] + customers
                                  if u != v) == 1, name=f"servicing_{u.id}")
-        # One LA ordering is followed starting at each customer
-        model.addConstr(quicksum(
-            y[r] for r in LA_routes[u]) == 1, name=f"LA_route_from_{u.id}")
-
-    # Y is consistent with X
-    for u in customers:
-        E_u = set()
-        a_wvr = {}
-        a_wr = {}
-        for w in u.LA_neighbors | {u}:
-            for v in u.LA_neighbors - {w}:
-                E_u.add((w, v))
-        for r in LA_routes[u]:
-            for w, v in E_u:
-                if w in r.visits:
-                    v_index = r.visits.index(w) + 1
-                    if v_index < len(r.visits):
-                        a_wr[w.id, r] = 0
-                        if r.visits[v_index] == v:
-                            a_wvr[w.id, v.id, r] = 1
-                        else:
-                            a_wvr[w.id, v.id, r] = 0
-                    else:
-                        a_wr[w.id, r] = 1
-                        a_wvr[w.id, v.id, r] = 0
-                else:
-                    a_wr[w.id, r] = 0
-                    a_wvr[w.id, v.id, r] = 0
-        for w, v in E_u:
-            model.addConstr(quicksum(
-                (y[r] * a_wvr[w.id, v.id, r]) for r in LA_routes[u]
-            ) <= x[w.id, v.id], name=f"LA_route_{u.id}_with_{w.id}_{v.id}_is_in_x")
-
-        for w in u.LA_neighbors | {u}:
-            model.addConstr(quicksum(x[w.id, v.id] for w, v in E_u) >= quicksum(
-                y[r] * a_wr[w.id, r] for r in LA_routes[u]), name=f"LA_route_{u.id}_ends_at_{w.id}_is_in_x")
 
     # Discrete time/capacity flow graphs (Z)
     # Flow conservation
@@ -132,12 +90,15 @@ def create_LAD_model(customers, start_depot, end_depot, capacity, LA_routes, G_d
             name=f"Cap_flow_{u_id}_{v_id}_x_consistent")
 
     for u_id, v_id in x:
+        # print(f"Looping through x for customers with ids ({u_id}, {v_id})")
         u_nodes = G_t_u[u_id]
         v_nodes = G_t_u[v_id]
         z_ij = []
         for i in u_nodes:
             for j in v_nodes:
                 if (i, j) in E_t:
+                    # print(
+                    #     f"Adding edge ({i.name},{j.name}) in E_t to z_ij")
                     z_ij.append(z_t[i.name, j.name])
         model.addConstr(
             x[u_id, v_id] == quicksum(z_ij),
