@@ -7,7 +7,8 @@ class Customer:
         self.time_window_start = time_window_start
         self.time_window_end = time_window_end
         self.index = index
-        self.LA_neighbors = set()
+        self.LA_neighbors = []
+        self.all_LA_neighbors = []
 
     def __repr__(self):
         return f"Cutomer({self.id}, {self.cost}, {self.demand}, {self.travel_time}, {self.time_window_start}, {self.time_window_end}, {self.index})"

@@ -18,10 +18,8 @@ class Node:
         return hash((self.u, self.k_lower, self.k_upper))
 
 
-def build_disc_cap_graph(customers, start_depot, end_depot, bucket_size, capacity):
+def create_cap_buckets(customers, bucket_size, capacity):
     D_u = {}
-
-    # Create buckets for each customer
     for u in customers:
         D_u[u.id] = []
         bucket_min = u.demand
@@ -31,10 +29,7 @@ def build_disc_cap_graph(customers, start_depot, end_depot, bucket_size, capacit
             bucket_min = bucket_max
         D_u[u.id].append((bucket_min, capacity))
 
-    G_d, E_d = build_disc_cap_graph_from_buckets(
-        customers, start_depot, end_depot, D_u, capacity)
-
-    return G_d, E_d, D_u
+    return D_u
 
 
 def build_disc_cap_graph_from_buckets(customers, start_depot, end_depot, buckets, capacity):
@@ -81,10 +76,8 @@ def build_disc_cap_graph_from_buckets(customers, start_depot, end_depot, buckets
     return G_d, E_d
 
 
-def build_disc_time_graph(customers, start_depot, end_depot, bucket_size):
+def create_time_buckets(customers, bucket_size):
     T_u = {}
-
-    # Create buckets for each customer
     for u in customers:
         T_u[u.id] = []
         bucket_min = u.time_window_end
@@ -93,11 +86,7 @@ def build_disc_time_graph(customers, start_depot, end_depot, bucket_size):
             T_u[u.id].append((bucket_min, bucket_max))
             bucket_min = bucket_max
         T_u[u.id].append((bucket_min, u.time_window_start))
-
-    G_t, E_t = build_disc_time_graph_from_buckets(
-        customers, start_depot, end_depot, T_u)
-
-    return G_t, E_t, T_u
+    return T_u
 
 
 def build_disc_time_graph_from_buckets(customers, start_depot, end_depot, buckets):
@@ -145,3 +134,21 @@ def build_disc_time_graph_from_buckets(customers, start_depot, end_depot, bucket
     G_t[end_depot.id, 0] = end_node
 
     return G_t, E_t
+
+
+def build_disc_cap_graph(customers, start_depot, end_depot, bucket_size, capacity):
+    D_u = create_cap_buckets(customers, bucket_size, capacity)
+
+    G_d, E_d = build_disc_cap_graph_from_buckets(
+        customers, start_depot, end_depot, D_u, capacity)
+
+    return G_d, E_d, D_u
+
+
+def build_disc_time_graph(customers, start_depot, end_depot, bucket_size):
+    T_u = create_time_buckets(customers, bucket_size)
+
+    G_t, E_t = build_disc_time_graph_from_buckets(
+        customers, start_depot, end_depot, T_u)
+
+    return G_t, E_t, T_u

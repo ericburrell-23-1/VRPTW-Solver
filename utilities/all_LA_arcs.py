@@ -17,7 +17,7 @@ def all_LA_arcs(customers):
                     continue
                 # print(f"\t\tv_p = {v_p.id}")
                 possible_neighbors = sorted(
-                    u.LA_neighbors - {u_p, v_p}, key=lambda c: c.id)
+                    set(u.LA_neighbors) - {u_p, v_p}, key=lambda c: c.id)
                 neighbor_sets = []
                 for k in range(0, len(possible_neighbors) + 1):
                     neighbor_sets.extend(

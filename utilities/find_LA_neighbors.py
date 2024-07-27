@@ -34,5 +34,7 @@ def find_LA_neighbors_for(customer_index, LA_n_count, all_customers, capacity):
 
 def find_all_LA_neighbors(customers, LA_n_count, capacity):
     for i in range(0, len(customers)):
-        customers[i].LA_neighbors.update(find_LA_neighbors_for(
-            i, LA_n_count, customers, capacity))
+        LA_neighbors = find_LA_neighbors_for(
+            i, LA_n_count, customers, capacity)
+        customers[i].all_LA_neighbors = LA_neighbors
+        customers[i].LA_neighbors = LA_neighbors

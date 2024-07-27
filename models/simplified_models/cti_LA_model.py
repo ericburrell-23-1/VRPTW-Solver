@@ -46,8 +46,8 @@ def create_LA_model(customers, start_depot, end_depot, capacity, LA_routes):
         E_u = set()
         a_wvr = {}
         a_wr = {}
-        for w in u.LA_neighbors | {u}:
-            for v in u.LA_neighbors - {w}:
+        for w in set(u.LA_neighbors) | {u}:
+            for v in set(u.LA_neighbors) - {w}:
                 E_u.add((w, v))
         for r in LA_routes[u]:
             for w, v in E_u:
@@ -70,7 +70,7 @@ def create_LA_model(customers, start_depot, end_depot, capacity, LA_routes):
                 (y[r] * a_wvr[w.id, v.id, r]) for r in LA_routes[u]
             ) <= x[w.id, v.id], name=f"LA_route_{u.id}_with_{w.id}_{v.id}_is_in_x")
 
-        for w in u.LA_neighbors | {u}:
+        for w in set(u.LA_neighbors) | {u}:
             model.addConstr(quicksum(x[w.id, v.id] for w, v in E_u) >= quicksum(
                 y[r] * a_wr[w.id, r] for r in LA_routes[u]), name=f"LA_route_{u.id}_ends_at_{w.id}_is_in_x")
 
