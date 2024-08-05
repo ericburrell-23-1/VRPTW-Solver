@@ -1,5 +1,5 @@
 import numpy as np
-# from utilities.debug.LA_neighbors import print_infeasible_neighbor
+from utilities.debug.LA_neighbors import print_infeasible_neighbor
 
 
 def find_LA_neighbors_for(customer_index, LA_n_count, all_customers, capacity):
@@ -23,8 +23,9 @@ def find_LA_neighbors_for(customer_index, LA_n_count, all_customers, capacity):
         # Check to make sure time/capacity are feasible
         if (capacity - neighbor.demand > customer.demand) and (customer.time_window_start - customer.travel_time[neighbor.index] > neighbor.time_window_end):
             LA_neighbors.append(neighbor)
-        # else:
-        #     print_infeasible_neighbor(customer, neighbor, capacity)
+        else:
+            if customer.id == 49:
+                print_infeasible_neighbor(customer, neighbor, capacity)
 
         if len(LA_neighbors) >= LA_n_count:
             return LA_neighbors
@@ -33,6 +34,7 @@ def find_LA_neighbors_for(customer_index, LA_n_count, all_customers, capacity):
 
 
 def find_all_LA_neighbors(customers, LA_n_count, capacity):
+    print("Finding all of the LA-Neighbors")
     for i in range(0, len(customers)):
         LA_neighbors = find_LA_neighbors_for(
             i, LA_n_count, customers, capacity)

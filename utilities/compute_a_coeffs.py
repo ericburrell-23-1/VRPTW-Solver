@@ -6,31 +6,44 @@ def compute_a_coeffs(customers, LA_routes):
     a_k_wrstar = {}
     E_u = {}
 
+    print("Computing 'a' coefficients")
     for u in customers:
-        # print(f"Building edge sets for customer {u.id}")
         E_u[u.id] = set()
         for w in set(u.LA_neighbors) | {u}:
             for v in set(u.LA_neighbors) - {w}:
                 E_u[u.id].add((w, v))
 
-        # Compute a_wvr and a_wrstar
+        # Compute a_wvr
         # print(f"Computing a_wvr and a_wrstar for customer {u.id}")
         for r in LA_routes[u]:
-            for w, v in E_u[u.id]:
+            for (w, v) in E_u[u.id]:
                 if w in r.visits:
                     v_index = r.visits.index(w) + 1
                     if v_index < len(r.visits):
-                        a_wrstar[u.id, w.id, r] = 0
+                        # a_wrstar[u.id, w.id, r] = 0
                         if r.visits[v_index] == v:
                             a_wvr[u.id, w.id, v.id, r] = 1
                         else:
                             a_wvr[u.id, w.id, v.id, r] = 0
                     else:
-                        a_wrstar[u.id, w.id, r] = 1
+                        # a_wrstar[u.id, w.id, r] = 1
                         a_wvr[u.id, w.id, v.id, r] = 0
                 else:
-                    a_wrstar[u.id, w.id, r] = 0
+                    # a_wrstar[u.id, w.id, r] = 0
                     a_wvr[u.id, w.id, v.id, r] = 0
+
+        # Compute a_wrstar
+        for r in LA_routes[u]:
+            for w in customers:
+                if w in r.visits:
+                    if (r.visits.index(w) + 1) == len(r.visits):
+                        a_wrstar[u.id, w.id, r] = 1
+                        # print(
+                        #     f"a_wrstar = 1 for u = {u.id}, w = {w.id}, r = {[c.id for c in r.visits]}")
+                    else:
+                        a_wrstar[u.id, w.id, r] = 0
+                else:
+                    a_wrstar[u.id, w.id, r] = 0
 
         # print(f"Computing a_k_wvr and a_k_wrstar for customer {u.id}")
         for k in range(1, len(u.LA_neighbors) + 1):

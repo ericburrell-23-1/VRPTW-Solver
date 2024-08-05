@@ -25,10 +25,6 @@ def create_LAD_model(customers, start_depot, end_depot, capacity, LA_routes, G_d
     # LA-route vars
     y = add_y_vars(model, customers, LA_routes)
 
-    # Resource vars
-    z_d, z_t, z_d_next_nodes, z_d_prev_nodes, z_t_next_nodes, z_t_prev_nodes, G_d_u, G_t_u = add_z_vars(
-        model, customers, start_depot, end_depot, G_d, E_d, G_t, E_t)
-
     # Objective
     cost_terms = []
     for u in customers + [start_depot]:
@@ -59,10 +55,6 @@ def create_LAD_model(customers, start_depot, end_depot, capacity, LA_routes, G_d
         for w in set(u.LA_neighbors) | {u}:
             model.addConstr(quicksum(x[w.id, v.id] for (w, v) in E_u[u.id]) >= quicksum(
                 y[r] * a_wrstar[u.id, w.id, r] for r in LA_routes[u]), name=f"LA_route_{u.id}_ends_at_{w.id}_is_in_x")
-
-    # Discrete time/capacity flow graphs (Z)
-    add_z_constrs(model, start_depot, end_depot, x, z_d, z_t, G_d, E_d, G_t, E_t,
-                  G_d_u, G_t_u, z_d_next_nodes, z_d_prev_nodes, z_t_next_nodes, z_t_prev_nodes)
 
     # Time/capacity windows/demands are met
     for v_id, u_id in x:
@@ -119,10 +111,6 @@ def create_relaxed_LAD_model(customers, start_depot, end_depot, capacity, LA_rou
     # LA-route vars
     y = add_y_vars(model, customers, LA_routes)
 
-    # Resource vars
-    z_d, z_t, z_d_next_nodes, z_d_prev_nodes, z_t_next_nodes, z_t_prev_nodes, G_d_u, G_t_u = add_z_vars(
-        model, customers, start_depot, end_depot, G_d, E_d, G_t, E_t)
-
     # Objective
     cost_terms = []
     for u in customers + [start_depot]:
@@ -171,13 +159,6 @@ def create_relaxed_LAD_model(customers, start_depot, end_depot, capacity, LA_rou
                                 name=f"LA_route_end_{u.id}_{w.id}_{k}")
                 constr8b_count += 1
 
-    # print(
-    #     f"Created {constr8a_count} 8a constraints and {constr8b_count} 8b constraints.")
-
-    # Discrete time/capacity flow graphs (Z)
-    add_z_constrs(model, start_depot, end_depot, x, z_d, z_t, G_d, E_d, G_t, E_t,
-                  G_d_u, G_t_u, z_d_next_nodes, z_d_prev_nodes, z_t_next_nodes, z_t_prev_nodes)
-
     # Time/capacity windows/demands are met
     for v_id, u_id in x:
         v = get_customer_by_id(v_id, customers_by_id, start_depot, end_depot)
@@ -204,7 +185,7 @@ def create_relaxed_LAD_model(customers, start_depot, end_depot, capacity, LA_rou
     model.addConstr(quicksum(x[v.id, end_depot.id] for v in customers) >= (
         sum(customer.demand for customer in customers) / capacity), name="min_vehicles_in")
 
-    return model, x, y, z_d, z_t
+    return model, x, y
 
 
 def add_y_vars(model, customers, LA_routes):
@@ -217,82 +198,6 @@ def add_y_vars(model, customers, LA_routes):
             y[r] = model.addVar(vtype=GRB.CONTINUOUS, name=y_var_name)
 
     return y
-
-
-def add_z_vars(model, customers, start_depot, end_depot, G_d, E_d, G_t, E_t):
-    G_d_u = {}
-    for u in customers + [start_depot, end_depot]:
-        G_d_u[u.id] = [G_d[(u.id, k)] for (u_key, k) in G_d if u_key == u.id]
-
-    z_d = {}
-    z_d_next_nodes = {i: [] for i in G_d.values()}
-    z_d_prev_nodes = {i: [] for i in G_d.values()}
-    for i in G_d.values():
-        for j in G_d.values():
-            if (i, j) in E_d:
-                z_d[i.name, j.name] = model.addVar(
-                    name=f"z_d_{i.name}_{j.name}")
-                z_d_next_nodes[i].append(j)
-                z_d_prev_nodes[j].append(i)
-
-    G_t_u = {}
-    for u in customers + [start_depot, end_depot]:
-        G_t_u[u.id] = [G_t[(u.id, k)] for (u_key, k) in G_t if u_key == u.id]
-
-    z_t = {}
-    z_t_next_nodes = {i: [] for i in G_t.values()}
-    z_t_prev_nodes = {i: [] for i in G_t.values()}
-    for i in G_t.values():
-        for j in G_t.values():
-            if (i, j) in E_t:
-                z_t[i.name, j.name] = model.addVar(
-                    name=f"z_t_{i.name}_{j.name}")
-                z_t_next_nodes[i].append(j)
-                z_t_prev_nodes[j].append(i)
-
-    model.update()
-
-    return z_d, z_t, z_d_next_nodes, z_d_prev_nodes, z_t_next_nodes, z_t_prev_nodes, G_d_u, G_t_u
-
-
-def add_z_constrs(model, start_depot, end_depot, x, z_d, z_t, G_d, E_d, G_t, E_t, G_d_u, G_t_u, z_d_next_nodes, z_d_prev_nodes, z_t_next_nodes, z_t_prev_nodes):
-    # Flow conservation
-    for i in G_d.values():
-        if i.u.id not in {start_depot.id, end_depot.id}:
-            model.addConstr(quicksum(z_d[i.name, j.name] for j in z_d_next_nodes[i]) ==
-                            quicksum(z_d[j.name, i.name] for j in z_d_prev_nodes[i]), name=f"cap_flow_conserv_{i.name}")
-
-    for i in G_t.values():
-        if i.u.id not in {start_depot.id, end_depot.id}:
-            model.addConstr(quicksum(z_t[i.name, j.name] for j in z_t_next_nodes[i]) ==
-                            quicksum(z_t[j.name, i.name] for j in z_t_prev_nodes[i]), name=f"time_flow_conserv_{i.name}")
-
-    # Z is consistent with X
-    for u_id, v_id in x:
-        u_nodes = G_d_u[u_id]
-        v_nodes = G_d_u[v_id]
-        z_ij = []
-        for i in u_nodes:
-            for j in v_nodes:
-                if (i, j) in E_d:
-                    z_ij.append(z_d[i.name, j.name])
-        model.addConstr(
-            x[u_id, v_id] == quicksum(z_ij),
-            name=f"Cap_flow_{u_id}_{v_id}_x_consistent")
-
-    for u_id, v_id in x:
-        u_nodes = G_t_u[u_id]
-        v_nodes = G_t_u[v_id]
-        z_ij = []
-        for i in u_nodes:
-            for j in v_nodes:
-                if (i, j) in E_t:
-                    z_ij.append(z_t[i.name, j.name])
-        model.addConstr(
-            x[u_id, v_id] == quicksum(z_ij),
-            name=f"Time_flow_{u_id}_{v_id}_x_consistent")
-
-    model.update()
 
 
 def get_customer_by_id(id, customers_by_id, start_depot, end_depot):

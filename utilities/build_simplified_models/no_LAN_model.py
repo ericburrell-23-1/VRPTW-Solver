@@ -1,37 +1,20 @@
 from data import load_data
-from utilities.find_LA_neighbors import find_all_LA_neighbors
-from models.LA_Disc_model import create_LAD_model, create_relaxed_LAD_model, add_z_vars, add_z_constrs
-from utilities.find_LA_neighbors import find_all_LA_neighbors
-from utilities.all_LA_arcs import all_LA_arcs
-from utilities.efficient_frontier import compute_efficient_frontier
+from models.simplified_models.no_LAN_model import create_no_LAN_model, create_relaxed_no_LAN_model, add_z_vars, add_z_constrs
 from utilities.discrete_resource_graphs import build_disc_cap_graph_from_buckets, build_disc_time_graph_from_buckets, create_cap_buckets, create_time_buckets
-from utilities.compute_a_coeffs import compute_a_coeffs
 from utilities.thresholds import create_cap_buckets_from_thresholds, create_time_buckets_from_thresholds
 
 
-def initialize_full_data(data_set, num_customers, k_count, d_s, t_s):
+def initialize_no_LAN_data(data_set, num_customers, d_s, t_s):
     customers, start_depot, end_depot, capacity = load_data(
         data_set, num_customers=num_customers, capacity=200)
 
-    # Find all LA-Neighbors
-    find_all_LA_neighbors(customers, k_count, capacity)
-
-    # Get LA-routes
-    P_plus, P_arcs = all_LA_arcs(customers)
-    LA_routes = compute_efficient_frontier(P_plus)
-
-    a_wvr, a_wrstar, a_k_wvr, a_k_wrstar, E_u = compute_a_coeffs(
-        customers, LA_routes)
-
-    # Create discrete resource buckets
-    print("Initializing resource buckets.")
     D_u = create_cap_buckets(customers, d_s, capacity)
     T_u = create_time_buckets(customers, t_s)
 
-    return customers, start_depot, end_depot, capacity, LA_routes, D_u, T_u, a_wvr, a_wrstar, a_k_wvr, a_k_wrstar, E_u
+    return customers, start_depot, end_depot, capacity, D_u, T_u
 
 
-def build_relaxed_vrptw_LAD(customers, start_depot, end_depot, capacity, LA_routes, D_u, T_u, a_k_wvr, a_k_wrstar, E_u):
+def build_relaxed_no_LAN(customers, start_depot, end_depot, capacity, D_u, T_u):
     # Create discrete resource graphs
     print("Initializing discrete capacity graph.")
     G_d, E_d = build_disc_cap_graph_from_buckets(
@@ -41,15 +24,15 @@ def build_relaxed_vrptw_LAD(customers, start_depot, end_depot, capacity, LA_rout
         customers, start_depot, end_depot, T_u)
 
     # Build and relax the model
-    model, x, y, z_d, z_t = create_relaxed_LAD_model(
-        customers, start_depot, end_depot, capacity, LA_routes, G_d, E_d, G_t, E_t, a_k_wvr, a_k_wrstar, E_u)
+    model, x, z_d, z_t = create_relaxed_no_LAN_model(
+        customers, start_depot, end_depot, capacity, G_d, E_d, G_t, E_t)
 
     model.update()
 
-    return model, x, y, z_d, z_t, G_d, E_d, G_t, E_t
+    return model, x, z_d, z_t, G_d, E_d, G_t, E_t
 
 
-def build_MILP_vrptw_LAD(customers, start_depot, end_depot, capacity, LA_routes, W_d, W_t, a_wvr, a_wrstar, E_u):
+def build_MILP_no_LAN(customers, start_depot, end_depot, capacity, W_d, W_t):
     D_u = create_cap_buckets_from_thresholds(W_d, capacity, customers)
     T_u = create_time_buckets_from_thresholds(W_t, customers)
     # Create discrete resource graphs
@@ -58,13 +41,13 @@ def build_MILP_vrptw_LAD(customers, start_depot, end_depot, capacity, LA_routes,
     G_t, E_t = build_disc_time_graph_from_buckets(
         customers, start_depot, end_depot, T_u)
 
-    model = create_LAD_model(
-        customers, start_depot, end_depot, capacity, LA_routes, G_d, E_d, G_t, E_t, a_wvr, a_wrstar, E_u)
+    model = create_no_LAN_model(
+        customers, start_depot, end_depot, capacity, G_d, E_d, G_t, E_t)
 
     return model
 
 
-def update_relaxed_model(model, customers, start_depot, end_depot, capacity, W_d, W_t, x):
+def update_relaxed_no_LAN_model(model, customers, start_depot, end_depot, capacity, W_d, W_t, x):
     D_u = create_cap_buckets_from_thresholds(W_d, capacity, customers)
     T_u = create_time_buckets_from_thresholds(W_t, customers)
 

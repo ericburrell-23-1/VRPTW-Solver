@@ -56,27 +56,29 @@ def get_data_from_set(data_set, num_customers):
     travel_time = []
     time_window_start = []
     time_window_end = []
-    travel_speed = 1
+    service_time = []
 
     for row in data:
         demand.append(row[3])
         time_window_start.append(t_0 - row[4])
         time_window_end.append(t_0 - row[5])
+        service_time.append(row[6])
         cost.append([])
         travel_time.append([])
         for destination in data:
-            distance = math.sqrt((row[1] - destination[1]) ** 2 +
-                                 (row[2] - destination[2]) ** 2)
-            distance = round(distance, 2)
-            time = (distance / travel_speed) + row[6]
-            cost[len(cost) - 1].append(distance)
+            distance = math.hypot((row[1] - destination[1]),
+                                  (row[2] - destination[2]))
+            distance = round(distance, 1)
+            s_time = row[6]
+            time = distance + s_time
+            cost[len(cost) - 1].append(time)
             travel_time[len(travel_time) - 1].append(time)
 
-    return n_customers, cost, demand, travel_time, time_window_start, time_window_end, t_0
+    return n_customers, cost, demand, travel_time, time_window_start, time_window_end, service_time, t_0
 
 
 def load_data(data_set, num_customers, capacity):
-    n_customers, cost, demand, travel_time, time_window_start, time_window_end, t_0 = get_data_from_set(
+    n_customers, cost, demand, travel_time, time_window_start, time_window_end, service_time, t_0 = get_data_from_set(
         data_set, num_customers=num_customers)
 
     customers = []
@@ -84,11 +86,11 @@ def load_data(data_set, num_customers, capacity):
     # Build Customer Objects
     for c in range(1, n_customers + 1):
         newCustomer = Customer(c, cost[c], demand[c],
-                               travel_time[c], time_window_start[c], time_window_end[c], c)
+                               travel_time[c], time_window_start[c], time_window_end[c], service_time[c], c)
         customers.append(newCustomer)
 
-    start_depot = Customer("Start", cost[0], 0, travel_time[0], t_0, t_0, 0)
-    end_depot = Customer("End", cost[0], 0, travel_time[0], t_0, 0, 0)
+    start_depot = Customer("Start", cost[0], 0, travel_time[0], t_0, t_0, 0, 0)
+    end_depot = Customer("End", None, 0, None, t_0, 0, 0, 0)
 
     return customers, start_depot, end_depot, capacity
 

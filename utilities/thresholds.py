@@ -33,10 +33,18 @@ def create_cap_buckets_from_thresholds(thresholds, capacity, customers):
         lower_bound = demand
 
         thresholds[u_id] = sorted(thresholds[u_id])
+        bucket = 0
         for upper_bound in thresholds[u_id]:
-            buckets[u_id].append((lower_bound, upper_bound))
+            if bucket != 0:
+                buckets[u_id].append((lower_bound, upper_bound))
+            else:
+                buckets[u_id].append((lower_bound, upper_bound))
             lower_bound = upper_bound
-        buckets[u_id].append((lower_bound, capacity))
+            bucket += 1
+        if bucket != 0 and (lower_bound + 1) < capacity:
+            buckets[u_id].append((lower_bound, capacity))
+        else:
+            buckets[u_id].append((lower_bound, capacity))
 
     return buckets
 
@@ -52,10 +60,18 @@ def create_time_buckets_from_thresholds(thresholds, customers):
         lower_bound = end_time
 
         thresholds[u_id] = sorted(thresholds[u_id])
+        bucket = 0
         for upper_bound in thresholds[u_id]:
-            buckets[u_id].append((lower_bound, upper_bound))
+            if bucket != 0:
+                buckets[u_id].append((lower_bound + 0.1, upper_bound))
+            else:
+                buckets[u_id].append((lower_bound, upper_bound))
             lower_bound = upper_bound
-        buckets[u_id].append((lower_bound, start_time))
+            bucket += 1
+        if bucket != 0:
+            buckets[u_id].append((lower_bound + 0.1, start_time))
+        else:
+            buckets[u_id].append((lower_bound, start_time))
 
     return buckets
 

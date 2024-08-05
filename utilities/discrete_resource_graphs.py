@@ -23,11 +23,19 @@ def create_cap_buckets(customers, bucket_size, capacity):
     for u in customers:
         D_u[u.id] = []
         bucket_min = u.demand
+        bucket = 0
         while (bucket_min + bucket_size) < capacity:
             bucket_max = bucket_min + bucket_size
-            D_u[u.id].append((bucket_min, bucket_max))
+            if bucket != 0:
+                D_u[u.id].append((bucket_min, bucket_max))
+            else:
+                D_u[u.id].append((bucket_min, bucket_max))
             bucket_min = bucket_max
-        D_u[u.id].append((bucket_min, capacity))
+            bucket += 1
+        if bucket != 0 and (bucket_min + 1) < capacity:
+            D_u[u.id].append((bucket_min, capacity))
+        else:
+            D_u[u.id].append((bucket_min, capacity))
 
     return D_u
 
@@ -81,11 +89,17 @@ def create_time_buckets(customers, bucket_size):
     for u in customers:
         T_u[u.id] = []
         bucket_min = u.time_window_end
-        while (bucket_min + bucket_size) < u.time_window_start:
+        while (bucket_min + bucket_size + 0.1) < u.time_window_start:
             bucket_max = bucket_min + bucket_size
-            T_u[u.id].append((bucket_min, bucket_max))
+            if bucket_min == u.time_window_end:
+                T_u[u.id].append((bucket_min, bucket_max))
+            else:
+                T_u[u.id].append((bucket_min + 0.1, bucket_max))
             bucket_min = bucket_max
-        T_u[u.id].append((bucket_min, u.time_window_start))
+        if bucket_min == u.time_window_end:
+            T_u[u.id].append((bucket_min, u.time_window_start))
+        else:
+            T_u[u.id].append((bucket_min + 0.1, u.time_window_start))
     return T_u
 
 

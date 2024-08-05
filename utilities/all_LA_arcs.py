@@ -5,6 +5,7 @@ from models.LA_arc_model import LA_arc
 def all_LA_arcs(customers):
     P_arcs = set()
     P_plus = set()
+    print("Building P_plus")
     sorted_customers = sorted(customers, key=lambda c: c.id)
 
     for u in sorted_customers:
